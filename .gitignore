@@ -1,0 +1,7 @@
+config/application.rb                                                                                                                                                                                                                              
+config/environments/*.rb
+log
+db/*.sqlite3
+vendor
+.bundle
+.vagrant
