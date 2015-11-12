@@ -14,6 +14,8 @@ Openstack api emulator provides minimum required openstack API to build VMWare V
 * Update `config/vsphere.yml` to point to your vsphere installation
 
   Configuration parameters
+  
+  ```
   api:
     url         - public url which is used to access this api e.g. http://openstack-api:9000
     private_key - private key file name relative to config/ssh-keys/.
@@ -23,21 +25,22 @@ Openstack api emulator provides minimum required openstack API to build VMWare V
     datacenter        datacenter name
     cluster           compute cluster name
     datastore_cluster datastore cluster name
-    base_folder:      folder where to deploy VMs
-    templates_folder: folder where to put created templates
+    base_folde        folder where to deploy VMs
+    templates_folder  folder where to put created templates
 
-    vm_flavors:
+    vm_flavors        flavors definitions
       standard:
         cpu: 1
         memory: 2
         disk: 10
+  ```
 
 * Since VMware has no concept of user data it's not possible to dynamically pass
 ssh keys to newly created VM. To make it work with packer add public key from `config/ssh-keys/default.pem.pub`
 to authorized keys of source VM
 
-* Current implemetation looks VM only in configured template folder.
-Move your source VM to this folder so api can find it
+* Current implemetation looks for VM only in configured template folder.
+Move your source VM to this folder so api can find it.
 
 ### Running packer
 * Create packer file `mypacker.json`
@@ -65,7 +68,7 @@ Move your source VM to this folder so api can find it
 
 * Run packer
   ```
-    ~/packer/packer build vmware.json
+    packer build mypacker.json
     openstack output will be in this color.
 
     ==> openstack: Discovering enabled extensions...
