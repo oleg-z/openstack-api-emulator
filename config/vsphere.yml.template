@@ -1,0 +1,17 @@
+development:
+  api:
+    url: <url of api e.g. http://openstack-api:9000>
+    private_key: default.pem
+
+  vsphere:
+    host:              <vmware host name or ip>
+    datacenter:        <datacenter name>
+    cluster:           <compute cluster name>
+    datastore_cluster: <datastore cluster name>
+    base_folder:       packer_vms
+    templates_folder:  packer_templates
+    vm_flavors:
+      standard:
+        cpu: 1
+        memory: 2
+        disk: 10

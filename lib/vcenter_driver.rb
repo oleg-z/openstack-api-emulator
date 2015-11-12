@@ -38,7 +38,8 @@ class VCenterDriver
 
   def authenticate
     vcenter.reload
-  rescue
+  rescue Fog::Vsphere::Errors::SecurityError => e
+    @logger.error(e)
     return false
   end
 
@@ -104,7 +105,7 @@ class VCenterDriver
 
     vm_spec      = @config.vm_flavors[vm_flavor]
 
-    clone_spec = build_clone_spec(vm_spec, "openstack_templates/#{vm_template}")
+    clone_spec = build_clone_spec(vm_spec, "#{@config.templates_folder}/#{vm_template}")
     clone_spec["name"] = vm_name
 
     @logger.info "Create VM #{vm_name} using #{vm_template} template"
@@ -122,7 +123,7 @@ class VCenterDriver
   end
 
   def clone_to_template(template_name)
-    templates_folder = "openstack_templates"
+    templates_folder = @config.templates_folder
     begin
       @logger.info("Creating vm folder /#{templates_folder}")
       vcenter.create_folder(datacenter, "/", templates_folder)

@@ -9,6 +9,7 @@ class KeystoneController < ActionController::Base
 
     v = VCenterDriver.new(username: @username, password: @password)
     @token = v.authenticate
+    return render json: "Failed to authenticate to vsphere using provided credentials", status: 403 unless @token
   end
 
   def information

@@ -1,5 +1,6 @@
 config/application.rb                                                                                                                                                                                                                              
 config/environments/*.rb
+config/vsphere.yml
 log
 db/*.sqlite3
 vendor

@@ -5,7 +5,7 @@ class NovaController < ActionController::Base
   def flavors
     @flavor_id = params[:flavor]
 
-    unless Rails.configuration.vcenter["vm_flavors"][@flavor_id.to_s]
+    unless Rails.configuration.vsphere["vm_flavors"][@flavor_id.to_s]
       return render :json => { error: 'Flavor not found' }, :status => 404
     end
   end
@@ -15,6 +15,12 @@ class NovaController < ActionController::Base
 
   def post_os_keypairs
     @keypair_name = params[:keypair][:name]
+
+    private_key_path = File.join(Rails.root, "config", "ssh-keys", Rails.configuration.api["private_key"])
+    public_key_path = "#{private_key_path}.pub"
+
+    @private_key = File.read(private_key_path)
+    @public_key = File.read(public_key_path)
 
     render :os_keypair
   end

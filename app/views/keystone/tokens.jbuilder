@@ -32,9 +32,9 @@ json.access do
                 json.array! [""] do
                     json.region      "vcenter"
                     json.id          type
-                    json.adminURL    "#{Rails.configuration.api_url}/#{name}/#{version}/"
-                    json.internalURL "#{Rails.configuration.api_url}/#{name}/#{version}/"
-                    json.publicURL   "#{Rails.configuration.api_url}/#{name}/#{version}/"
+                    json.adminURL    "#{Rails.configuration.api["url"]}/#{name}/#{version}/"
+                    json.internalURL "#{Rails.configuration.api["url"]}/#{name}/#{version}/"
+                    json.publicURL   "#{Rails.configuration.api["url"]}/#{name}/#{version}/"
                 end
             end
         end
