@@ -7,18 +7,25 @@ require 'rbvmomi/vim'
 module Fog
   module Fog::Compute
     class Fog::Compute::Vsphere
-      class Servers < Fog::Collection
-        def find_vm_by_path(vm_path, datacenter = nil)
-          Server.new service.find_vm_by_path(vm_path, datacenter)
+      class Templates < Fog::Collection
+        def find_by_path(vm_path, datacenter = nil)
+          object = service.find_by_path(vm_path, datacenter)
+          (object.nil? || !object["template"]) ? nil : Template.new(object)
         end
       end
 
-      # define missing operation for Server
-      class Server < Fog::Compute::Server
-        def find_by_path(vm_path, datacenter = nil)
-          new service.find_vm_by_path(vm_path, datacenter)
-        end
+      class Template < Fog::Model
+        attribute :path
+      end
 
+      class Servers < Fog::Collection
+        def find_by_path(vm_path, datacenter = nil)
+          object = service.find_by_path(vm_path, datacenter)
+          (object.nil? || object["template"]) ? nil : Server.new(object)
+        end
+      end
+
+      class Server < Fog::Compute::Server
         def move_to_folder(options = {})
           requires :instance_uuid
           service.vm_move_to_folder('instance_uuid' => instance_uuid, 'folder' => options[:folder], 'datacenter' => datacenter)
@@ -70,41 +77,19 @@ module Fog
       end
 
       class Real
-        #def find_vm_by_path(vm_path, dc = nil)
-        #  datacenters   = [dc] if dc
-        #  datacenters ||= raw_datacenters.collect { |d| d["name"] }
-        #  vm = nil
-        #  counter = 1
-        #  datacenters.each do |datacenter|
-        #    if folder
-        #      vm = list_all_templates_in_folder(folder, datacenter)
-        #        .detect { |v| v["id"] == id || v["name"] == id }
-        #    else
-        #      raw_vm = raw_list_all_virtual_machines(dc)
-        #          .shuffle
-        #          .detect { |v| counter+=1; puts counter; v.config.uuid == id }
-        #      vm = convert_vm_view_to_attr_hash([raw_vm]).first if raw_vm
-        #    end
-        #  end
-        #  vm ? vm : raise(Fog::Compute::Vsphere::NotFound, "#{id} was not found")
-        #end
-
-        def find_vm_by_path(vm_path, datacenter_name = nil)
+        def find_by_path(vm_path, datacenter_name = nil)
           folder = File.dirname(vm_path)
           vm_name = File.basename(vm_path)
-          vm = list_vms_in_folder(folder, datacenter_name)
+
+          folder = get_raw_vmfolder(folder, datacenter_name)
+          raise(Fog::Compute::Vsphere::NotFound, "#{vm_name} was not found") unless folder
+
+          folder
+            .children
+            .grep(RbVmomi::VIM::VirtualMachine)
+            .map(&method(:convert_vm_mob_ref_to_attr_hash))
             .detect { |v| v["id"] == vm_name || v["name"] == vm_name }
-          vm ? vm : raise(Fog::Compute::Vsphere::NotFound, "#{id} was not found")
         end
-
-        def list_vms_in_folder(path, datacenter_name)
-          folder = get_raw_vmfolder(path, datacenter_name)
-          vms = folder.children.grep(RbVmomi::VIM::VirtualMachine)
-          # remove all template based virtual machines
-          vms.delete_if { |v| v.config.nil? || v.config.template }
-          vms.map(&method(:convert_vm_mob_ref_to_attr_hash))
-        end
-
 
         def vm_move_to_folder(options = {})
           raise ArgumentError, "instance_uuid is a required parameter" unless options.has_key? 'instance_uuid'
@@ -116,39 +101,6 @@ module Fog
           task = vm_folder_ref.MoveIntoFolder_Task('_this'=> vm_folder_ref, 'list' => [vm_mob_ref])
           task.wait_for_completion
           { 'task_state' => task.info.state }
-        end
-
-
-        # search VM by name
-        # if default get_virtual_machine can't find vm by name methods iterates through folders
-        # and try to find matching folder + VM combination
-        # even through it seems as a lot of work it's still much more efficient than servers.all
-        def get_virtual_machine_by_name(vm_name, datacenter_name = nil)
-          begin
-            return get_virtual_machine(vm_name, datacenter_name)
-          rescue Fog::Compute::Vsphere::NotFound
-          end
-
-          datacenters = find_datacenters(datacenter_name)
-          datacenters.map do |dc|
-            @connection.serviceContent.viewManager.CreateContainerView({
-              :container  => dc.vmFolder,
-              :type       =>  ["Folder"],
-              :recursive  => true
-            }).view.each do |folder|
-              begin
-                return get_virtual_machine(get_full_folder(folder, dc) + "/" + vm_name, datacenter_name)
-              rescue Fog::Compute::Vsphere::NotFound
-              end
-            end
-          end
-          raise Fog::Compute::Vsphere::NotFound
-        end
-
-        # build full folder path
-        def get_full_folder(folder, dc)
-          return folder.name if folder.parent == dc.vmFolder
-          return get_full_folder(folder.parent, dc) + "/" + folder.name
         end
 
         def vm_annotate(options = {})

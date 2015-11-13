@@ -59,9 +59,9 @@ class NovaController < ActionController::Base
 
   def servers_action
     @template_name = params["createImage"]["name"]
-    @template = vcenter_driver.get(params[:server_id])
-    @template.poweroff
-    @template.clone_to_template(@template_name)
+    @server = vcenter_driver.get(params[:server_id])
+    @server.poweroff
+    @template = @server.clone_to_template(@template_name)
 
     response.headers["Location"] = "http://localhost:3000/nova/v2/images/#{@template.id}"
     render nothing: true, status: 202

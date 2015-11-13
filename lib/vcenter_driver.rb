@@ -7,6 +7,10 @@ class VCenterDriver
   attr_reader :vm_name
   attr_reader :vm_ip
 
+  def self.is_uuid?(id)
+    !(id =~ /[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}/).nil?
+  end
+
   def self.list_flavors
     return Config.new.vm_flavors.keys.sort
   end
@@ -54,12 +58,6 @@ class VCenterDriver
     fail "Method #{m} doesn't exist"
   end
 
-  def find_vm_by_path(vm_path)
-    vm = vcenter.servers.find_vm_by_path(vm_path)
-    raise ::InvalidInputError, "VM '#{vm_path}' doesn't exist" if vm == nil
-    vm
-  end
-
   def get_template
     self.class.new(template_id: template_id, config: @config)
   end
@@ -75,10 +73,19 @@ class VCenterDriver
     rescue RbVmomi::VIM::DuplicateName
     end
 
-    template_vm = vm_template_path.include?("/") ? find_vm_by_path(vm_template_path) : vcenter.servers.get(vm_template_path)
+    template_path = nil
+    if self.class.is_uuid?(vm_template_path)
+      template_path = vm_template_path
+    else
+      template = vcenter.templates.find_by_path(vm_template_path)
+      template ||= vcenter.servers.find_by_path(vm_template_path)
+
+      is_template = template.kind_of? Fog::Compute::Vsphere::Template
+      template_path = is_template ? template.path : template.id
+    end
 
     clone_spec = {
-      "template_path" => template_vm.id,
+      "template_path" => template_path,
       "datacenter"    => datacenter,
       "dest_folder"   => dest_folder,
       "numCPUs"       => vm_spec['cpu'].to_i,
@@ -97,7 +104,6 @@ class VCenterDriver
   # Manages VM #
   ##############
   def create(options = {})
-
     vm_name      = options[:name]
     vm_template  = options[:template]
     vm_flavor    = options[:size]
@@ -105,10 +111,10 @@ class VCenterDriver
 
     vm_spec      = @config.vm_flavors[vm_flavor]
 
-    clone_spec = build_clone_spec(vm_spec, "#{@config.templates_folder}/#{vm_template}")
+    clone_spec = build_clone_spec(vm_spec, "#{vm_template}")
     clone_spec["name"] = vm_name
 
-    @logger.info "Create VM #{vm_name} using #{vm_template} template"
+    @logger.info "Creating VM '#{vm_name}' using '#{vm_template}' template"
 
     vm_info = vcenter.vm_clone(clone_spec)["new_vm"]
     vm = self.class.new(vm_id: vm_info["id"], config: @config)
@@ -134,11 +140,11 @@ class VCenterDriver
     clone_spec["name"] = template_name
     clone_spec["dest_folder"] = templates_folder
 
-    @logger.info "Creating template #{template_name}"
+    @logger.info "Creating template '#{templates_folder}/#{template_name}'"
     vm_info = vcenter.vm_clone(clone_spec)["new_vm"]
     vm = self.class.new(vm_id: vm_info["id"], config: @config)
 
-    @logger.info("Template #{template_name} is created")
+    @logger.info("Template '#{template_name}' is created")
     vm
   end
 
