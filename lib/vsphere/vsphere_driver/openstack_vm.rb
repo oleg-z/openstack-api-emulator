@@ -48,7 +48,7 @@ class VSphereDriver::OpenstackVM
 
   def poweroff
     return unless exist?
-    return self if vm_obj.power_state == "poweredOff"
+    return if vm_obj.power_state == "poweredOff"
 
     vm_obj.stop(:force => true)
     vm_obj.wait_for(60, 5) { power_state == "poweredOff" }
@@ -70,7 +70,7 @@ class VSphereDriver::OpenstackVM
     vm_flavor    = options[:size]
     vm_network   = options[:network]
     dest_folder  = options[:dest_folder] || config.base_folder
-    mark_at_template = options[:mark_as_template] || false
+    mark_as_template = options[:mark_as_template] || false
 
     vm_spec = nil
     vm_spec = config.vm_flavors[vm_flavor] if vm_flavor
@@ -86,7 +86,7 @@ class VSphereDriver::OpenstackVM
     ensure_folder_exist(dest_folder)
     clone_spec["dest_folder"] = dest_folder
 
-    if mark_at_template
+    if mark_as_template
       clone_spec["power_on"] = false
     else
       clone_spec["resource_pool"] = find_resource_pool(options[:resource_pool])
@@ -98,7 +98,7 @@ class VSphereDriver::OpenstackVM
     Rails.cache.write(clone_spec["instanceUuid"], resp["task_ref"])
 
     @logger.info("'#{vm_name}' server id: #{clone_spec["instanceUuid"]}")
-    if mark_at_template
+    if mark_as_template
       VSphereDriver::OpenstackImage.new(connection: @connection, id: clone_spec["instanceUuid"])
     else
       VSphereDriver::OpenstackVM.new(connection: @connection, id: clone_spec["instanceUuid"])
@@ -109,7 +109,7 @@ class VSphereDriver::OpenstackVM
     clone(
       name: template_name,
       dest_folder: config.templates_folder,
-      mark_at_template: true
+      mark_as_template: true
     )
   end
 
@@ -173,6 +173,15 @@ class VSphereDriver::OpenstackVM
       "template_path" => template_path,
       "datacenter"    => config.datacenter
     }
+
+    clone_spec["extraConfig"] = {
+      "uuid" => clone_spec["uuid"],
+      "instanceUuid" => clone_spec["instanceUuid"]
+    }
+
+    clone_spec["annotation"] = options["annotation"].to_s
+    clone_spec["annotation"] += "\ninstance_uuid: #{clone_spec["instanceUuid"]}"
+    clone_spec["annotation"].strip!
 
     clone_spec["numCPUs"]    = vm_spec['cpu'].to_i if defined?(vm_spec["cpu"])
     clone_spec["memory"]     = vm_spec['memory'].to_i * 1024 if defined?(vm_spec["memory"])

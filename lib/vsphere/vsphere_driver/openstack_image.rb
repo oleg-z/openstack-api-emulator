@@ -5,7 +5,6 @@ class VSphereDriver::OpenstackImage < VSphereDriver::OpenstackVM
     task_id = Rails.cache.read(@vm_id)
     if task_id
       task = vsphere.find_task(task_id)
-      p task.info.state
       return :QUEUED if task.info.state != "success" || vm_obj(reload: true).nil?
       Rails.cache.delete(@vm_id)
     end

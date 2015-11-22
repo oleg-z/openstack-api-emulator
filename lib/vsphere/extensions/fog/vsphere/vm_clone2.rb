@@ -134,6 +134,18 @@ module Fog
           virtual_machine_config_spec.uuid = options['uuid'] if ( options.key?('uuid') )
           virtual_machine_config_spec.instanceUuid = options['instanceUuid'] if ( options.key?('instanceUuid') )
 
+          if options.key?('extraConfig')
+            virtual_machine_config_spec.extraConfig =
+              options['extraConfig']
+              .collect do |i|
+                RbVmomi::VIM::OptionValue.new(key: i[0], value: i[1], dynamicProperty: [])
+              end
+          end
+
+          if options.key?('annotation')
+            virtual_machine_config_spec.annotation = options['annotation']
+          end
+
           # Options['customization_spec']
           # OLD Options still supported
           # * domain <~String> - *REQUIRED* - Sets the server's domain for customization
