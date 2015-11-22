@@ -9,21 +9,23 @@ Rails.application.routes.draw do
 
   resources :nova do
     collection do
-      get 'v2/extensions'      => 'nova#extensions'
-      get 'v2/flavors/:flavor' => 'nova#flavors', :constraints => { :flavor => /[a-z0-9.]+/ }
+      get    'v2/:tenant_id/extensions'      => 'nova#extensions'
+      get    'v2/:tenant_id/flavors/:flavor' => 'nova#flavors', :constraints => { :flavor => /[a-z0-9.]+/ }
 
-      post   'v2/servers'        => 'nova#servers_new'
-      get    'v2/servers/:server_id' => 'nova#servers_get'
-      delete 'v2/servers/:server_id' => 'nova#servers_delete'
-      post   'v2/servers/:server_id/action' => 'nova#servers_action'
+      post   'v2/:tenant_id/servers'        => 'nova#servers_new'
+      get    'v2/:tenant_id/servers/:server_id' => 'nova#servers_get'
+      delete 'v2/:tenant_id/servers/:server_id' => 'nova#servers_delete'
 
-      get    'v2/images/:image_id' => 'nova#images_get'
-      delete 'v2/images/:image_id' => 'nova#images_delete'
-      post   'v2/images/:image_id/action' => 'nova#images_action'
+      post   'v2/:tenant_id/servers/:server_id/action' => 'nova#servers_action'
 
-      get 'v2/os-keypairs'     => 'nova#os_keypairs'
-      post 'v2/os-keypairs'    => 'nova#post_os_keypairs'
-      delete 'v2/os-keypairs/:keypair_name' => 'nova#delete_os_keypairs'
+      get    'v2/:tenant_id/os-keypairs'               => 'nova#os_keypairs'
+      post   'v2/:tenant_id/os-keypairs'               => 'nova#post_os_keypairs'
+      delete 'v2/:tenant_id/os-keypairs/:keypair_name' => 'nova#delete_os_keypairs'
+
+      get    'v2/:tenant_id/images/:image_id'        => 'nova#images_get'
+      delete 'v2/:tenant_id/images/:image_id'        => 'nova#images_delete'
+
+      post   'v2/:tenant_id/images/:image_id/action' => 'nova#images_action'
     end
   end
 

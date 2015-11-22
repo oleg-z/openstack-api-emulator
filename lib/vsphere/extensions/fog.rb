@@ -1,0 +1,11 @@
+require 'fog'
+require 'fog/compute/models/server'
+require 'fog/core/collection'
+require 'fog/core/model'
+require 'rbvmomi/vim'
+
+require_relative 'fog/vsphere/models'
+require_relative 'fog/vsphere/find_by_path'
+require_relative 'fog/vsphere/mark_as_template'
+require_relative 'fog/vsphere/vm_clone2'
+require_relative 'fog/vsphere/find_task'

@@ -1,4 +1,8 @@
 class NovaController < ActionController::Base
+  after_filter do
+    puts response.body
+  end
+
   def extensions
   end
 
@@ -32,43 +36,48 @@ class NovaController < ActionController::Base
   def servers_new
     @username, @password = request.headers["HTTP_X_AUTH_TOKEN"].split("::")
 
-    flavor   = params["server"]["flavorRef"]
-    template = params["server"]["imageRef"]
-    vm_name  = params["server"]["name"]
-    network  = params["server"]["networks"].shift["uuid"]
+    flavor        = params["server"]["flavorRef"]
+    template      = params["server"]["imageRef"]
+    vm_name       = params["server"]["name"]
+    network       = params["server"]["networks"].shift["uuid"]
+    resource_pool = params["tenant_id"]
 
-    @vm = vcenter_driver.create(
-      name: vm_name,
-      size: flavor,
-      network: network,
-      template: template
+    connection = VSphereDriver.new(username: @username, password: @password)
+    connection.authenticate
+    template_vm = VSphereDriver::OpenstackImage.new(connection: connection, id: template)
+    @vm = template_vm.clone(
+      name:          vm_name,
+      size:          flavor,
+      network:       network,
+      resource_pool: resource_pool
     )
-    @vm.poweron
-    @vm.wait_ip
 
     render :servers_new, status: 202
   end
 
-  def servers_get
-    @username, @password = request.headers["HTTP_X_AUTH_TOKEN"].split("::")
-    v = VCenterDriver.new(username: @username, password: @password)
-    @vm = v.get(params[:server_id])
+  #"source_image1": "2ec68a16-8ad0-4b35-aa52-8af998a7fc3a",
 
-    render nothing: true, status: 404 unless @vm.exist?
+  def servers_get
+    @vm = VSphereDriver::OpenstackVM.new(id: params[:server_id], connection: vsphere_connection)
+
+    @cloning_in_progress = @vm.cloning_in_progress?
+    return render nothing: true, status: 404 unless @cloning_in_progress || @vm.exist?
   end
 
   def servers_action
     @template_name = params["createImage"]["name"]
-    @server = vcenter_driver.get(params[:server_id])
-    @server.poweroff
-    @template = @server.clone_to_template(@template_name)
+    @vm = VSphereDriver::OpenstackVM.new(id: params[:server_id], connection: vsphere_connection)
+    @vm.poweroff
+    @template = @vm.create_template(@template_name)
 
-    response.headers["Location"] = "http://localhost:3000/nova/v2/images/#{@template.id}"
+    response.headers["Location"] = "http://localhost:3000/nova/v2/images/#{@template.vm_id}"
     render nothing: true, status: 202
   end
 
   def servers_delete
-    @vm = vcenter_driver.get(params[:server_id])
+    @vm = VSphereDriver::OpenstackVM.new(id: params[:server_id], connection: vsphere_connection)
+    return render nothing: true, status: 204 unless @vm.exist?
+
     @vm.poweroff
     @vm.destroy
     render nothing: true, status: 204
@@ -79,15 +88,22 @@ class NovaController < ActionController::Base
   end
 
   def images_get
-    @template = vcenter_driver.get(params[:image_id])
+    @template = VSphereDriver::OpenstackImage.new(id: params[:image_id], connection: vsphere_connection)
+    render nothing: true, status: 404 if @template.state == :DELETED
   end
 
   def images_delete
-    binding.pry
+    @template = VSphereDriver::OpenstackImage.new(id: params[:image_id], connection: vsphere_connection)
+    render nothing: true, status: 202 unless @template.exist?
+
+    @template.destroy
+    render nothing: true, status: 202
   end
 
-  def vcenter_driver
+  def vsphere_connection
     @username, @password = request.headers["HTTP_X_AUTH_TOKEN"].split("::")
-    @vcenter ||= VCenterDriver.new(username: @username, password: @password)
+    @vsphere ||= VSphereDriver.new(username: @username, password: @password)
+    @vsphere.authenticate
+    @vsphere
   end
 end

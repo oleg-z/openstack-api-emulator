@@ -9,6 +9,7 @@ gem 'sqlite3'
 gem "fog"
 gem "rbvmomi"
 gem "pry"
+gem "dalli"
 
 # Build JSON APIs with ease. Read more: https://github.com/rails/jbuilder
 gem 'jbuilder', '~> 2.0'
@@ -19,7 +20,7 @@ gem 'sdoc', '~> 0.4.0', group: :doc
 # gem 'bcrypt', '~> 3.1.7'
 
 # Use Unicorn as the app server
-gem 'puma'
+#gem 'puma'
 
 # Use Capistrano for deployment
 # gem 'capistrano-rails', group: :development

@@ -1,6 +1,6 @@
 endpoints = [
-    ["compute",   "nova", "v2"],
-    ["computev3", "nova", "v3"],
+    ["compute",   "nova", "v2/#{@tenant_name}"],
+    ["computev3", "nova", "v3/#{@tenant_name}"],
 
     ["network",   "neutron", "v1"],
 
@@ -25,16 +25,16 @@ json.access do
 
     json.serviceCatalog do
         json.array! endpoints do |endpoint|
-            type, name, version = endpoint
+            type, name, path = endpoint
             json.type type
             json.name name
             json.endpoints do
                 json.array! [""] do
                     json.region      "vcenter"
                     json.id          type
-                    json.adminURL    "#{Rails.configuration.api["url"]}/#{name}/#{version}/"
-                    json.internalURL "#{Rails.configuration.api["url"]}/#{name}/#{version}/"
-                    json.publicURL   "#{Rails.configuration.api["url"]}/#{name}/#{version}/"
+                    json.adminURL    "#{Rails.configuration.api["url"]}/#{name}/#{path}/"
+                    json.internalURL "#{Rails.configuration.api["url"]}/#{name}/#{path}/"
+                    json.publicURL   "#{Rails.configuration.api["url"]}/#{name}/#{path}/"
                 end
             end
         end

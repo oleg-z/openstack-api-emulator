@@ -2,7 +2,7 @@ require 'digest/sha2'
 require 'socket'
 require 'openssl'
 
-class VCenterDriver::Config
+class VSphereDriver::Config
   attr_accessor :apiUser
   attr_accessor :apiPassword
 
