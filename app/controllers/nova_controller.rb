@@ -6,6 +6,7 @@ class NovaController < ActionController::Base
   def extensions
   end
 
+  api :GET, "nova/v2/:tenant_id/flavors/:flavor_id", "Returns information about requested flavor"
   def flavors
     @flavor_id = params[:flavor]
 

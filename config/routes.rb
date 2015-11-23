@@ -1,4 +1,6 @@
 Rails.application.routes.draw do
+  apipie
+  root to: 'application#documentation'
 
   resources :keystone do
     collection do
