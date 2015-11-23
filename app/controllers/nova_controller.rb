@@ -44,18 +44,21 @@ class NovaController < ActionController::Base
 
     connection = VSphereDriver.new(username: @username, password: @password)
     connection.authenticate
+
+    dest_folder   = File.dirname(params["server"]["name"])
+    dest_folder   = connection.config.base_folder if dest_folder == "."
+
     template_vm = VSphereDriver::OpenstackImage.new(connection: connection, id: template)
     @vm = template_vm.clone(
       name:          vm_name,
       size:          flavor,
       network:       network,
+      dest_folder:   dest_folder,
       resource_pool: resource_pool
     )
 
     render :servers_new, status: 202
   end
-
-  #"source_image1": "2ec68a16-8ad0-4b35-aa52-8af998a7fc3a",
 
   def servers_get
     @vm = VSphereDriver::OpenstackVM.new(id: params[:server_id], connection: vsphere_connection)
