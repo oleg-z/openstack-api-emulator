@@ -22,6 +22,7 @@ class VSphereDriver::OpenstackVM
     task = vsphere.find_task(task_id) || (return false)
     return true if task.info.state != "success"
     return true if vm_obj(reload: true).nil? || state == "STOPPED"
+
     Rails.cache.delete(@vm_id)
     return false
   end
@@ -95,6 +96,8 @@ class VSphereDriver::OpenstackVM
 
     @logger.info "Creating VM '#{vm_name}' using '#{@vm_id}' template"
     resp = vsphere.vm_clone_extended(clone_spec)
+    @logger.info "Clone task is initiated'#{vm_name}' using '#{@vm_id}' template"
+
     Rails.cache.write(clone_spec["instanceUuid"], resp["task_ref"])
 
     @logger.info("'#{vm_name}' server id: #{clone_spec["instanceUuid"]}")
@@ -106,9 +109,11 @@ class VSphereDriver::OpenstackVM
   end
 
   def create_template(template_name, options = {})
+    dest_folder  = options[:dest_folder] || config.templates_folder
+
     clone(
       name: template_name,
-      dest_folder: config.templates_folder,
+      dest_folder: dest_folder,
       mark_as_template: true
     )
   end

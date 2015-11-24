@@ -39,15 +39,20 @@ class NovaController < ActionController::Base
 
     flavor        = params["server"]["flavorRef"]
     template      = params["server"]["imageRef"]
-    vm_name       = params["server"]["name"]
+
     network       = params["server"]["networks"].shift["uuid"]
     resource_pool = params["tenant_id"]
 
+    vm_name = params["server"]["name"]
+    if params["server"]["name"].include?("/")
+      dest_folder = File.dirname(params["server"]["name"])
+      vm_name = File.basename(params["server"]["name"])
+    end
+
+    vm_name += "-#{Time.now.to_i}"
+
     connection = VSphereDriver.new(username: @username, password: @password)
     connection.authenticate
-
-    dest_folder   = File.dirname(params["server"]["name"])
-    dest_folder   = connection.config.base_folder if dest_folder == "."
 
     template_vm = VSphereDriver::OpenstackImage.new(connection: connection, id: template)
     @vm = template_vm.clone(
@@ -70,11 +75,17 @@ class NovaController < ActionController::Base
 
   def servers_action
     @template_name = params["createImage"]["name"]
-    @vm = VSphereDriver::OpenstackVM.new(id: params[:server_id], connection: vsphere_connection)
-    @vm.poweroff
-    @template = @vm.create_template(@template_name)
 
-    response.headers["Location"] = "http://localhost:3000/nova/v2/images/#{@template.vm_id}"
+    if params["createImage"]["name"].include?("/")
+      dest_folder   = File.dirname(params["createImage"]["name"])
+      template_name = File.basename(params["createImage"]["name"])
+    end
+
+    vm = VSphereDriver::OpenstackVM.new(id: params[:server_id], connection: vsphere_connection)
+    vm.poweroff
+    template = vm.create_template(template_name, dest_folder: dest_folder)
+
+    response.headers["Location"] = "http://localhost:3000/nova/v2/images/#{template.vm_id}"
     render nothing: true, status: 202
   end
 
