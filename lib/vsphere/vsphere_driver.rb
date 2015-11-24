@@ -9,8 +9,8 @@ class VSphereDriver
   attr_reader :connection
 
   def initialize(options = {})
-    @config   = Config.new(username: options[:username], password: options[:password])
-    @logger   = Rails.logger
+    @config = Config.new(username: options[:username], password: options[:password])
+    @logger = Rails.logger
   end
 
   def authenticate

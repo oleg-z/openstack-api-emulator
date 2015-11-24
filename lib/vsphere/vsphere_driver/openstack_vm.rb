@@ -130,12 +130,12 @@ class VSphereDriver::OpenstackVM
 
   def vm_obj(options = {})
     @obj = nil if options[:reload]
-    @obj ||= vsphere.servers.get(@vm_id)
+    @obj ||= self.class.is_uuid?(@vm_id) ? vsphere.servers.get(@vm_id) : vsphere.servers.find_by_path(@vm_id)
   end
 
   def method_missing(m, *args, &block)
     if exist? && vm_obj.respond_to?(m)
-      return vm_obj.send(m)
+      return vm_obj.send(m, *args)
     end
     fail "Method #{m} doesn't exist"
   end

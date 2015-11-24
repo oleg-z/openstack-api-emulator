@@ -1,4 +1,6 @@
 class NovaController < ActionController::Base
+  include ActionController::Live
+
   after_filter do
     puts response.body if Rails.env.to_s == "development"
   end
@@ -6,7 +8,9 @@ class NovaController < ActionController::Base
   def extensions
   end
 
-  api :GET, "nova/v2/:tenant_id/flavors/:flavor_id", "Returns information about requested flavor"
+  api :GET,
+      "nova/v2/:tenant_id/flavors/:flavor_id",
+      "Show flavor details"
   def flavors
     @flavor_id = params[:flavor]
 
@@ -15,9 +19,16 @@ class NovaController < ActionController::Base
     end
   end
 
+  api :GET,
+      "nova/v2/:tenant_id/os-keypairs",
+      "List keypairs"
   def os_keypairs
   end
 
+
+  api :POST,
+      "nova/v2/:tenant_id/os-keypairs",
+      "Create or import keypair"
   def post_os_keypairs
     @keypair_name = params[:keypair][:name]
 
@@ -30,10 +41,16 @@ class NovaController < ActionController::Base
     render :os_keypair
   end
 
+  api :DELETE,
+      "nova/v2/:tenant_id/os-keypairs/:keypair_name",
+      "Delete keypair"
   def delete_os_keypairs
     render nothing: true, status: 202
   end
 
+  api :POST,
+      "nova/v2/:tenant_id/servers",
+      "Creates one or more servers."
   def servers_new
     @username, @password = request.headers["HTTP_X_AUTH_TOKEN"].split("::")
 
@@ -66,6 +83,9 @@ class NovaController < ActionController::Base
     render :servers_new, status: 202
   end
 
+  api :GET,
+      "nova/v2/:tenant_id/server/:server_id",
+      "Shows details for a server."
   def servers_get
     @vm = VSphereDriver::OpenstackVM.new(id: params[:server_id], connection: vsphere_connection)
 
@@ -73,6 +93,9 @@ class NovaController < ActionController::Base
     return render nothing: true, status: 404 unless @cloning_in_progress || @vm.exist?
   end
 
+  api :POST,
+      "nova/v2/:tenant_id/server/:server_id/action",
+      "'createImage' action: Creates an image from a server."
   def servers_action
     @template_name = params["createImage"]["name"]
 
@@ -89,6 +112,9 @@ class NovaController < ActionController::Base
     render nothing: true, status: 202
   end
 
+  api :DELETE,
+      "nova/v2/:tenant_id/server/:server_id",
+      "Deletes a server."
   def servers_delete
     @vm = VSphereDriver::OpenstackVM.new(id: params[:server_id], connection: vsphere_connection)
     return render nothing: true, status: 204 unless @vm.exist?
@@ -102,11 +128,33 @@ class NovaController < ActionController::Base
     binding.pry
   end
 
+  api :GET,
+      "nova/v2/:tenant_id/images/:image_id",
+      "Gets details for an image."
   def images_get
     @template = VSphereDriver::OpenstackImage.new(id: params[:image_id], connection: vsphere_connection)
     render nothing: true, status: 404 if @template.state == :DELETED
   end
 
+  api :GET,
+      "nova/v2/:tenant_id/images/:image_id/file",
+      "Download binary image data."
+  def get_images_file
+    @template = VSphereDriver::OpenstackImage.new(id: params[:image_id], connection: vsphere_connection)
+    return render nothing: true, status: 404 unless @template.exist?
+
+    response.headers["Content-Type"] = "application/octet-stream"
+    Rails.logger.info("[#{params[:image_id]}] Exporting OVF")
+    @template.export_ovf(output: response.stream)
+    response.stream.close
+    render nothing: true
+  rescue ActionController::Live::ClientDisconnected
+    Rails.logger.info("Stop image exporting. Client disconnected")
+  end
+
+  api :DELETE,
+      "nova/v2/:tenant_id/images/:image_id",
+      "Deletes an image."
   def images_delete
     @template = VSphereDriver::OpenstackImage.new(id: params[:image_id], connection: vsphere_connection)
     render nothing: true, status: 202 unless @template.exist?
@@ -114,6 +162,8 @@ class NovaController < ActionController::Base
     @template.destroy
     render nothing: true, status: 202
   end
+
+  private
 
   def vsphere_connection
     @username, @password = request.headers["HTTP_X_AUTH_TOKEN"].split("::")
