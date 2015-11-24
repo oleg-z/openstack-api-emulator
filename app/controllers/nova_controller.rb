@@ -1,6 +1,6 @@
 class NovaController < ActionController::Base
   after_filter do
-    puts response.body
+    puts response.body if Rails.env.to_s == "development"
   end
 
   def extensions
