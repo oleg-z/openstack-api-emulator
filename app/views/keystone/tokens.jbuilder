@@ -12,14 +12,14 @@ endpoints = [
 
 json.access do
     json.token do
-        json.issued_at @token.loginTime
-        json.expires   @token.loginTime + 86400
-        json.id        "#{@username}::#{@password}"
+        json.issued_at @session.issued_at
+        json.expires   @session.expires_at
+        json.id        @session.session_id
         json.tenant do
-            json.description @token.fullName
-            json.enabled     true
             json.id          @username
-            json.name        @token.fullName
+            json.name        @username
+            json.description ""
+            json.enabled     true
         end
     end
 

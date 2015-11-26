@@ -7,9 +7,9 @@ class KeystoneController < ActionController::Base
     @password = params[:auth][:passwordCredentials][:password]
     @tenant_name = params[:auth]["tenantName"]
 
-    v = VSphereDriver.new(username: @username, password: @password)
-    @token = v.authenticate
-    return render json: "Failed to authenticate to vsphere using provided credentials", status: 403 unless @token
+    @session = KeystoneSession.new
+    @session.start(username: @username, password: @password)
+    return render json: "Failed to authenticate to vsphere using provided credentials", status: 403 unless @session
   end
 
   def information

@@ -1,5 +1,5 @@
 class NovaController < ActionController::Base
-  include ActionController::Live
+  before_action :authenticate
 
   after_filter do
     puts response.body if Rails.env.to_s == "development"
@@ -52,8 +52,6 @@ class NovaController < ActionController::Base
       "nova/v2/:tenant_id/servers",
       "Creates one or more servers."
   def servers_new
-    @username, @password = request.headers["HTTP_X_AUTH_TOKEN"].split("::")
-
     flavor        = params["server"]["flavorRef"]
     template      = params["server"]["imageRef"]
 
@@ -68,10 +66,7 @@ class NovaController < ActionController::Base
 
     vm_name += "-#{Time.now.to_i}"
 
-    connection = VSphereDriver.new(username: @username, password: @password)
-    connection.authenticate
-
-    template_vm = VSphereDriver::OpenstackImage.new(connection: connection, id: template)
+    template_vm = VSphereDriver::OpenstackImage.new(connection: vsphere_connection, id: template)
     @vm = template_vm.clone(
       name:          vm_name,
       size:          flavor,
@@ -136,22 +131,6 @@ class NovaController < ActionController::Base
     render nothing: true, status: 404 if @template.state == :DELETED
   end
 
-  api :GET,
-      "nova/v2/:tenant_id/images/:image_id/file",
-      "Download binary image data."
-  def get_images_file
-    @template = VSphereDriver::OpenstackImage.new(id: params[:image_id], connection: vsphere_connection)
-    return render nothing: true, status: 404 unless @template.exist?
-
-    response.headers["Content-Type"] = "application/octet-stream"
-    Rails.logger.info("[#{params[:image_id]}] Exporting OVF")
-    @template.export_ovf(output: response.stream)
-    response.stream.close
-    render nothing: true
-  rescue ActionController::Live::ClientDisconnected
-    Rails.logger.info("Stop image exporting. Client disconnected")
-  end
-
   api :DELETE,
       "nova/v2/:tenant_id/images/:image_id",
       "Deletes an image."
@@ -165,9 +144,17 @@ class NovaController < ActionController::Base
 
   private
 
+  def authenticate
+    return if @session
+    session_id = request.headers["HTTP_X_AUTH_TOKEN"]
+    @session = KeystoneSession.get(session_id)
+
+    return render json: "Failed to authenticate using provided session id", status: 403 unless @session
+  end
+
   def vsphere_connection
-    @username, @password = request.headers["HTTP_X_AUTH_TOKEN"].split("::")
-    @vsphere ||= VSphereDriver.new(username: @username, password: @password)
+    return @vsphere if @vsphere
+    @vsphere ||= VSphereDriver.new(username: @session.username, password: @session.password)
     @vsphere.authenticate
     @vsphere
   end

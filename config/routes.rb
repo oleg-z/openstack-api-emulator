@@ -27,7 +27,7 @@ Rails.application.routes.draw do
       get    'v2/:tenant_id/images/:image_id'        => 'nova#images_get'
       delete 'v2/:tenant_id/images/:image_id'        => 'nova#images_delete'
 
-      get    'v2/:tenant_id/images/:image_id/file'   => 'nova#get_images_file'
+      get    'v2/:tenant_id/images/:image_id/file'   => 'nova_live#get_images_file'
 
       post   'v2/:tenant_id/images/:image_id/action' => 'nova#images_action'
     end
