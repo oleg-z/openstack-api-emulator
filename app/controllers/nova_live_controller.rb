@@ -18,18 +18,16 @@ class NovaLiveController < NovaController
     Rails.logger.info("Stop image exporting. Client disconnected")
   end
 
-  def authenticate
-    return if @session
-    session_id = request.headers["HTTP_X_AUTH_TOKEN"]
-    @session = KeystoneSession.get(session_id)
+  private
 
+  def authenticate
+    return true if @session
+    session_id = request.headers["HTTP_X_AUTH_TOKEN"]
+    @session   = KeystoneSession.get(session_id)
     return render json: "Failed to authenticate using provided session id", status: 403 unless @session
   end
 
   def vsphere_connection
-    return @vsphere if @vsphere
-    @vsphere ||= VSphereDriver.new(username: @session.username, password: @session.password)
-    @vsphere.authenticate
-    @vsphere
+    @session.connection
   end
 end

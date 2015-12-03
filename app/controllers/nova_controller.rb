@@ -8,6 +8,36 @@ class NovaController < ActionController::Base
   def extensions
   end
 
+  def limits
+    response = JSON.parse('{
+        "limits": {
+            "absolute": {
+                "maxImageMeta": 128,
+                "maxPersonality": 5,
+                "maxPersonalitySize": 10240,
+                "maxSecurityGroupRules": 20,
+                "maxSecurityGroups": 10,
+                "maxServerMeta": 128,
+                "maxTotalCores": 20,
+                "maxTotalFloatingIps": 10,
+                "maxTotalInstances": 10,
+                "maxTotalKeypairs": 100,
+                "maxTotalRAMSize": 51200,
+                "maxServerGroups": 10,
+                "maxServerGroupMembers": 10,
+                "totalCoresUsed": 0,
+                "totalInstancesUsed": 0,
+                "totalRAMUsed": 0,
+                "totalSecurityGroupsUsed": 0,
+                "totalFloatingIpsUsed": 0,
+                "totalServerGroupsUsed": 0
+            },
+            "rate": []
+        }
+    }')
+    render json: response
+  end
+
   api :GET,
       "nova/v2/:tenant_id/flavors/:flavor_id",
       "Show flavor details"
@@ -17,6 +47,37 @@ class NovaController < ActionController::Base
     unless Rails.configuration.vsphere["vm_flavors"][@flavor_id.to_s]
       return render :json => { error: 'Flavor not found' }, :status => 404
     end
+  end
+
+  api :GET,
+      "nova/v2/:tenant_id/flavors",
+      "List flavors"
+  def list_flavors
+    render json: JSON.parse('{
+    "flavors": [
+        {
+            "id": "1",
+            "links": [
+                {
+                    "href": "http://openstack.example.com/v2/openstack/flavors/1",
+                    "rel": "self"
+                },
+                {
+                    "href": "http://openstack.example.com/openstack/flavors/1",
+                    "rel": "bookmark"
+                }
+            ],
+            "name": "m1.tiny"
+        }
+    ]}')
+  end
+
+  api :GET,
+      "nova/v2/:tenant_id/flavors",
+      "List flavors"
+  def list_flavors_details
+    @flavors = vsphere_connection.config.vm_flavors.keys
+    @flavors_details = vsphere_connection.config.vm_flavors
   end
 
   api :GET,
@@ -107,6 +168,21 @@ class NovaController < ActionController::Base
     render nothing: true, status: 202
   end
 
+  def servers_details
+    limit = params[:limit].to_i || 21
+    from = 0
+    if params[:marker]
+      from = Rails.cache.read("servers_marker:#{params[:marker]}").to_i
+    end
+
+    @tenant_id = params[:tenant_id]
+    @vms = vsphere_connection.connection.servers.list_vms_by_page(from: from, limit: limit)
+
+    if @vms.size == limit
+      Rails.cache.write("servers_marker:#{@vms[-2].id}", from + (limit - 1))
+    end
+  end
+
   api :DELETE,
       "nova/v2/:tenant_id/server/:server_id",
       "Deletes a server."
@@ -145,17 +221,13 @@ class NovaController < ActionController::Base
   private
 
   def authenticate
-    return if @session
+    return true if @session
     session_id = request.headers["HTTP_X_AUTH_TOKEN"]
-    @session = KeystoneSession.get(session_id)
-
+    @session   = KeystoneSession.get(session_id)
     return render json: "Failed to authenticate using provided session id", status: 403 unless @session
   end
 
   def vsphere_connection
-    return @vsphere if @vsphere
-    @vsphere ||= VSphereDriver.new(username: @session.username, password: @session.password)
-    @vsphere.authenticate
-    @vsphere
+    @session.connection
   end
 end

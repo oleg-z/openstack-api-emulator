@@ -4,17 +4,32 @@ Rails.application.routes.draw do
 
   resources :keystone do
     collection do
-      get 'v2.0/' => 'keystone#information'
+      get  'v2.0/' => 'keystone#information'
       post 'v2.0/tokens' => 'keystone#tokens'
+    end
+  end
+
+  resources :admin do
+    collection do
+      get  'v2.0/' => 'keystone#information'
+      post 'v2.0/tokens' => 'keystone#tokens'
+      get  'v2.0/tenants' => 'keystone#tenants'
+      get  'v2.0/default/tokens' => 'keystone#not_implemented'
+      post 'v2.0/default/tokens' => 'keystone#not_implemented'
     end
   end
 
   resources :nova do
     collection do
       get    'v2/:tenant_id/extensions'      => 'nova#extensions'
+      get    'v2/:tenant_id/limits'          => 'nova#limits'
+
+      get    'v2/:tenant_id/flavors'         => 'nova#list_flavors'
+      get    'v2/:tenant_id/flavors/detail'  => 'nova#list_flavors_details'
       get    'v2/:tenant_id/flavors/:flavor' => 'nova#flavors', :constraints => { :flavor => /[a-z0-9.]+/ }
 
-      post   'v2/:tenant_id/servers'        => 'nova#servers_new'
+      post   'v2/:tenant_id/servers'            => 'nova#servers_new'
+      get    'v2/:tenant_id/servers/detail'     => 'nova#servers_details'
       get    'v2/:tenant_id/servers/:server_id' => 'nova#servers_get'
       delete 'v2/:tenant_id/servers/:server_id' => 'nova#servers_delete'
 
