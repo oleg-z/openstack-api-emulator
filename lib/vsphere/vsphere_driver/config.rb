@@ -3,12 +3,10 @@ require 'socket'
 require 'openssl'
 
 class VSphereDriver::Config
-  attr_accessor :apiUser
-  attr_accessor :apiPassword
-
   attr_accessor :apiHost
   attr_accessor :apiPubkeyHash
   attr_accessor :apiUrl
+  attr_accessor :session_cookie
 
   attr_accessor :cluster
   attr_accessor :datacenter
@@ -29,6 +27,11 @@ class VSphereDriver::Config
 
     @username = options[:username]
     @password = options[:password]
+
+    if options[:session_cookie]
+      @username = :session_cookie
+      @password = options[:session_cookie]
+    end
 
     # update vcenter config
     @apiHost       = Rails.configuration.vsphere["host"]

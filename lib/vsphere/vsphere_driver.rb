@@ -9,13 +9,13 @@ class VSphereDriver
   attr_reader :connection
 
   def initialize(options = {})
-    @config = Config.new(username: options[:username], password: options[:password])
+    @config = Config.new(username: options[:username], password: options[:password], session_cookie: options[:session_cookie])
     @logger = Rails.logger
   end
 
   def authenticate
     @connection = Fog::Compute.new(@config.connection_hash)
-    @connection.reload
+    @connection.current_session
   rescue Fog::Vsphere::Errors::SecurityError => e
     @logger.error(e)
     return false
