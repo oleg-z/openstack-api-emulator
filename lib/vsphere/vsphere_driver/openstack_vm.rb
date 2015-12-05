@@ -190,7 +190,7 @@ class VSphereDriver::OpenstackVM
 
     clone_spec["numCPUs"]    = vm_spec['cpu'].to_i if defined?(vm_spec["cpu"])
     clone_spec["memory"]     = vm_spec['memory'].to_i * 1024 if defined?(vm_spec["memory"])
-    clone_spec["interfaces"] = [Fog::Compute::Vsphere::Interface.new(network: "cd15-collect", summary: "cd15-collect")] if network
+    clone_spec["interfaces"] = [Fog::Compute::Vsphere::Interface.new(network: network, summary: network)] if network
     clone_spec["volumes"]    = [Fog::Compute::Vsphere::Volume.new(thin: true, size_gb: vm_spec["disk"].to_i)] if defined?(vm_spec["disk"])
 
     clone_spec
